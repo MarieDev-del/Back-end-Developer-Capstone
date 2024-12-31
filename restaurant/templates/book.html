@@ -1,0 +1,257 @@
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section>
+  <article>
+    <h1>Make a reservation</h1>
+    <!--Begin row-->
+    <div class="row">
+      <!--Begin col-->
+      <div class="column">
+          {% csrf_token %}
+          <form  action="" method="POST" id="form">
+            <!-- {% csrf_token %} -->
+            <p>
+              <label for="first_name">Name:</label>
+              <input type="text" placeholder="Your Name" maxlength="200" required="" id="first_name">
+            </p>
+            <p>
+               <label for="reservation_date">Reservation date:</label>
+              <input type="date" id="reservation_date">
+            </p>
+
+    
+            <p>
+                <select id="reservation_slot" name="reservation_slot">
+                  <option value="" disabled selected>Select time</option>
+                  {% for time, display in select_time %}
+                  <option value="{{ time }}">{{ display }}</option>
+                  {% endfor %}
+                </select>
+            </p>
+            {% comment %} <button type="button" id="button">Reserve</button> {% endcomment %}
+            <input type="submit" value="Reserve">
+          </form>
+      </div>
+      <!--End col-->
+
+      <!--Begin col-->
+      <div class="column">
+        <h2>Bookings For <span id="today"></span></h2>
+        <div id="bookings">
+        </div>
+      </div>
+      <!--End col-->
+    </div>
+    <!--End row-->
+
+
+
+
+  </article>
+</section>
+<script>
+  document.querySelector('#reserve-button').addEventListener('click', function (e) {
+    e.preventDefault(); // Prevent the default form submission
+    // Add code to send form data via AJAX or fetch
+});
+
+<div id="selectedTimeDisplay">Selected Time: None</div>
+
+
+
+document.getElementById('timeSelect').addEventListener('change', function() {
+
+const selectedTime = this.value;
+
+document.getElementById('selectedTimeDisplay').innerText = "Selected Time: " + selectedTime;
+
+});
+
+document.getElementById('button').addEventListener('click', function(event) {
+  event.preventDefault(); 
+});
+
+
+  console.log("Hello");
+  document.getElementById("id_reservation_date").type="date"
+
+  const date = new Date()
+  document.getElementById('reservation_date').value = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`
+
+  console.log(document.getElementById('reservation_date').value)
+  getBookings()
+
+
+  document.getElementById('reservation_date').addEventListener('change', function () {
+    getBookings()
+  })
+
+
+  function getBookings() {
+    let reserved_slots = []
+    const date = document.getElementById('reservation_date').value
+    document.getElementById('today').innerHTML = date
+    
+    fetch("{% url 'bookings' %}" + '?date=' + date)
+      .then(r => r.json())
+      .then(data => {
+        reserved_slots = []
+        bookings = ''
+        for (item of data) {
+          console.log(item.fields)
+          reserved_slots.push(item.fields.reservation_slot)
+          bookings += `<p>${item.fields.first_name} - ${formatTime(item.fields.reservation_slot)}</p>`
+        }
+
+        slot_options = '<option value="0" disabled>Select time</option>'
+        for (i = 10; i <= 20; i++) {
+          const label = formatTime(i)
+          if (reserved_slots.includes(i)) {
+            slot_options += `<option value=${i} disabled>${label}</option>`
+          } else {
+            slot_options += `<option value=${i}>${label}</option>`
+          }
+
+        }
+        
+        document.getElementById('reservation_slot').innerHTML = slot_options
+        if(bookings==''){
+          bookings = "No bookings"
+        }
+        document.getElementById('bookings').innerHTML = bookings
+      })
+  }
+
+  function formatTime(time) {
+    const ampm = time < 12 ? 'AM' : 'PM'
+    const t = time < 12 ? time : time > 12 ? time - 12 : time
+    const label = `${t} ${ampm}`
+    return label
+  }
+
+
+  document.getElementById('button').addEventListener('click', function (e) {
+    const formdata = {
+      first_name: document.getElementById('first_name').value,
+      reservation_date: document.getElementById('reservation_date').value,
+      reservation_slot: document.getElementById('reservation_slot').value,
+    }
+
+    fetch("{% url 'bookings' %}", { method: 'post', body: JSON.stringify(formdata) })
+      .then(r => r.text())
+      .then(data => {
+        getBookings()
+      })
+  })
+
+
+  document.getElementById("reservationForm").addEventListener("submit", async function (e) {
+    e.preventDefault(); // Prevent default form submission
+
+    const name = document.getElementById("name").value;
+    const reservationDate = document.getElementById("reservationDate").value;
+    const time = document.getElementById("time").value;
+
+    try {
+        const response = await fetch("/submit-reservation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name, reservationDate, time }),
+        });
+
+        const result = await response.json();
+        const messageElement = document.getElementById("responseMessage");
+
+        if (response.ok) {
+            messageElement.textContent = "Reservation successful!";
+            messageElement.style.color = "green";
+        } else {
+            messageElement.textContent = `Error: ${result.message}`;
+            messageElement.style.color = "red";
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        document.getElementById("responseMessage").textContent = "An error occurred.";
+    }
+});
+
+
+
+// Set today's date in the "today" span
+const todaySpan = document.getElementById('today');
+const today = new Date();
+const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+todaySpan.textContent = today.toLocaleDateString(undefined, options);
+
+// Example dynamic booking data (you can replace this with data from your backend)
+const bookings = [
+  { time: '10:00 AM', name: 'John Doe' },
+  { time: '11:00 AM', name: 'Jane Smith' },
+];
+
+// Dynamically populate bookings
+const bookingsDiv = document.getElementById('bookings');
+if (bookings.length > 0) {
+  bookings.forEach((booking) => {
+    const bookingElement = document.createElement('p');
+    bookingElement.textContent = `${booking.time} - ${booking.name}`;
+    bookingsDiv.appendChild(bookingElement);
+  });
+} else {
+  bookingsDiv.textContent = 'No bookings for today.';
+}
+
+
+
+document.getElementById("reservationForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const token = localStorage.getItem("accessToken"); // Save token from login
+  const name = document.getElementById("name").value;
+  const date = document.getElementById("reservationDate").value;
+  const time = document.getElementById("time").value;
+
+  try {
+      const response = await fetch("/api/reservation/", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,  // Attach token here
+          },
+          body: JSON.stringify({ name, date, time }),
+      });
+
+      if (response.ok) {
+          alert("Reservation successful!");
+      } else {
+          const data = await response.json();
+          alert(`Error: ${data.error || "Something went wrong."}`);
+      }
+  } catch (error) {
+      console.error("Error:", error);
+  }
+});
+
+</script>
+
+<button id="submit-btn">Submit</button>
+<script>
+    document.getElementById('submit-btn').addEventListener('click', function () {
+        fetch('/your-endpoint/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+            },
+            body: JSON.stringify({ your: 'data' }),
+        });
+    });
+</script>
+{% endblock %}
+
+
+
